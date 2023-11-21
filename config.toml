@@ -1,4 +1,4 @@
-baseurl = "https://www.example.com"
+baseurl = "https://suidpit.github.io"
 title = "home"
 theme = "hugo-coder"
 languagecode = "en"
