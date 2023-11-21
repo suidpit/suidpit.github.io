@@ -10,8 +10,8 @@ paginate = 20
 style = "github-dark"
 
 [params]
-  author = "Pit"
-  info = "mumbling on weird machines"
+  author = "~/suidpit/org"
+  info = "thoughts on weird machines & black magic"
   description = ""
   keywords = "blog,reverse-engineering,personal,hacking"
   avatarurl = "images/avatar.jpg"
@@ -55,7 +55,8 @@ style = "github-dark"
   name = "Blog"
   weight = 1
   url  = "posts/"
-[[menu.main]]
-  name = "About"
-  weight = 2
-  url = "about/"
+#
+#[[menu.main]]
+#  name = "About"
+#  weight = 2
+#  url = "about/"
