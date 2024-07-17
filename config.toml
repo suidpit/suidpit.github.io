@@ -1,0 +1,83 @@
+baseurl = "https://suidpit.github.io"
+title = "~/suidpit/org"
+theme = "archie"
+languagecode = "en"
+defaultcontentlanguage = "en"
+
+paginate = 3
+
+# Code Highlight
+pygmentsstyle = "monokai"
+pygmentscodefences = true
+pygmentscodefencesguesssyntax = true
+
+[params]
+  mode="light" # color-mode → light,dark,toggle or auto
+  useCDN=false # don't use CDNs for fonts and icons, instead serve them locally.
+  subtitle = "a collection of notes"
+  mathjax = true # enable MathJax support
+  katex = true # enable KaTeX support
+  author = "~/suidpit/org"
+  info = "thoughts on weird machines & black magic"
+  description = ""
+  keywords = "blog,reverse-engineering,personal,hacking"
+  #avatarurl = "images/avatar.jpg"
+  #gravatar = "john.doe@example.com"
+
+  faviconSVG = "/img/favicon.svg"
+  favicon_32 = "/img/favicon-32x32.png"
+  favicon_16 = "/img/favicon-16x16.png"
+
+  since = 2018
+
+  enableTwemoji = true
+
+  colorScheme = "auto"
+  hidecolorschemetoggle = false
+
+  # customCSS = ["css/custom.css"]
+  # customSCSS = ["scss/custom.scss"]
+  # customJS = ["js/custom.js"]
+
+[taxonomies]
+  category = "categories"
+  series = "series"
+  tag = "tags"
+  author = "authors"
+
+# Social links
+[[params.social]]
+  name = "GitHub"
+  icon = "github"
+  url = "https://github.com/suidpit/"
+
+[[params.social]]
+  name = "X"
+  icon = "twitter"
+  url = "https://x.com/suidpit/"
+
+# Menu links
+# [[menu.main]]
+#   name = "Home"
+#   weight = 1
+#   url  = "/"
+#
+  [[menu.main]]
+  name = "Archive"
+  url = "/posts"
+  weight = 2
+#
+# [[menu.main]]
+# name = "About"
+# url = "/about"
+# weight = 3
+#
+# [[menu.main]]
+# name = "Tags"
+# url = "/tags"
+# weight = 4
+#
+#[[menu.main]]
+#  name = "About"
+#  weight = 2
+#  url = "about/"
