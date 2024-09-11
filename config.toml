@@ -12,7 +12,7 @@ pygmentscodefences = true
 pygmentscodefencesguesssyntax = true
 
 [params]
-  mode="light" # color-mode → light,dark,toggle or auto
+  mode="dark" # color-mode → light,dark,toggle or auto
   useCDN=false # don't use CDNs for fonts and icons, instead serve them locally.
   subtitle = "a collection of notes"
   mathjax = true # enable MathJax support
