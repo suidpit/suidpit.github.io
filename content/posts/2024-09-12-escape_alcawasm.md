@@ -3,10 +3,9 @@ title: "AlcaWASM Challenge Writeup - Pwning an In-Browser Lua Interpreter"
 description: "Gamedevs of the world, unite! Your favourite language is in danger -- the l33t wrongdoers have figured out how to BYOB (Bring Your Own Bytecode) and pwn the Lua v5.4 interpreter!"
 date: 2024-09-12T12:30:00+01:00
 tags: ["writeup", "pwn", "wasm", "lua"]
+image: "/images/alcawasm_wide.jpg"
 draft: false
 ---
-
-![Escape from alcawasm!](/images/alcawasm_wide.jpg)
 
 ## Introduction
 

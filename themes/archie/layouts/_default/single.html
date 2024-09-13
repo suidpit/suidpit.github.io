@@ -5,6 +5,11 @@
 			<h1 class="title">{{ .Title }}</h1>
 			<div class="meta">Posted on {{ dateFormat "Jan 2, 2006" .Date }}{{ if .Draft }} <span class="draft-label">DRAFT</span> {{ end }}</div>
 		</div>
+
+		{{ with .Params.image }}
+			<img src="{{ . }}" alt="post image" class="post-featured-image">
+		{{ end }}
+
 		{{ if isset .Params "tldr" }}
 		<div class="tldr">
 			<strong>tl;dr:</strong>
